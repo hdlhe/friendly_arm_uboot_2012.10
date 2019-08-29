@@ -148,6 +148,9 @@ reset:
 	ldr	r0, =_start
 	mcr	p15, 0, r0, c12, c0, 0	@Set VBAR
 #endif
+	
+	bl gpio_out
+	bl led1_on
 
 	/* the mask ROM code should have PLL and others stable */
 #ifndef CONFIG_SKIP_LOWLEVEL_INIT
@@ -160,7 +163,17 @@ call_board_init_f:
 	ldr	sp, =(CONFIG_SYS_INIT_SP_ADDR)
 	bic	sp, sp, #7 /* 8-byte alignment for ABI compliance */
 	ldr	r0,=0x00000000
-	bl	board_init_f
+	//bl	board_init_f
+	
+	ldr	r0, =_start
+	ldr	r1, _board_init_f_ofs
+	add	lr, r0, r1
+	
+	ldr	r0, =0x00000000
+	mov	pc, lr
+
+_board_init_f_ofs:
+	.word	board_init_f - _start
 
 /*------------------------------------------------------------------------------*/
 
@@ -554,3 +567,26 @@ fiq:
 
 #endif /* CONFIG_USE_IRQ */
 #endif /* CONFIG_SPL_BUILD */
+
+
+gpio_out:
+	ldr r11, =0xE0200280
+	ldr r12, =0x00001111
+	str r12, [r11]
+	
+	ldr r11, =0xE0200284
+	ldr r12, =0xF
+	str r12, [r11]
+
+	mov pc, lr
+
+.global led1_on
+led1_on:
+	ldr r11, =0xE0200284
+	//ldr r12, =0x0
+	//str r12, [r11]
+
+	ldr r12, [r11]
+	bic r12, r12, #0x2
+	str r12, [r11]
+	mov pc, lr

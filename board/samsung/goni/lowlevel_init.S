@@ -214,7 +214,31 @@ skip_check_didle:
 	/* for UART */
 	bl	uart_asm_init
 
+	ldr	r0, =0xE0000000
+	ldr	r0, [r0]
+	bl	display_hex
+	ldr	r0, [r0]
+	bl	display_hex
+	bl low_level_srom_net_init
+	bl	ddrmem_init
+	
+	ldr	r0, =0x30000000
+	ldr	r1, =0x12345678
+	str	r1, [r0]
+	bl	display_mem
+	ldr	r1, =0x87654321
+	ldr	r0, =0x30000000
+	str	r1, [r0]
+	bl	display_mem
+	
+	
 	bl	internal_ram_init
+
+	bl	copy_code_to_dram
+	ldr	r0, =0x34800000
+	bl	display_mem
+	ldr r0, =0x34801cb4
+	bl display_mem	
 
 	cmp	r7, r8
 	/* Clear wakeup status register */
@@ -461,5 +485,287 @@ uart_asm_init:
 	ldr	r1, [r0, #0x4]			@ S5PC1XX_GPIO_DAT_OFFSET
 	orr	r1, r1, #(1 << 7)		@ 7 = 7 * 1-bit
 	str	r1, [r0, #0x4]			@ S5PC1XX_GPIO_DAT_OFFSET
+	
+
+	ldr	r0, =0xE0200000
+	ldr	r1, = 0x22
+	str	r1,[r0]
+
+	ldr	r0, =0xE2900000
+	ldr	r1, =3
+	str	r1, [r0]
+
+	ldr	r1, =0x305
+	//ldr	r0, =0x5
+	str	r1, [r0, #0x04] 		@UCON0=0x305
+	
+	ldr	r1, =1
+	str	r1, [r0, #0x8]			@UFCON0=8
+
+	ldr	r1,=0
+	str	r1,[r0, #0x0C]			@UMCON0=0
+
+	ldr	r1, =34
+	//ldr	r1, =35
+	str	r1,[r0, #0x28]			@UBRDIV0=34
+
+	ldr	r1, =0xDFDD
+	//ldr	r1, =0x80
+	str	r1, [r0, #0x2C]			@UDIVSLOT0=13`1
+
+	ldr	r0, =0xE2900020
+	ldr	r1, =0x55
+	str	r1, [r0]			@UTH0='U'
+	
+	ldr	r1, =0x61
+	str	r1, [r0]			@UTH0='a'
+
+	ldr	r1, =0x72
+	str	r1, [r0]			@UTH0='r'
+
+	ldr	r1, =0x74
+	str	r1, [r0]			@UTH0='t'
+
+	ldr	r1, =0x0A
+	str	r1, [r0]			@UTH0='\n'
+	ldr	r1, =0x0D
+	str	r1, [r0]			@UTH0='\n'
+
 200:
+	mov	pc, lr
+
+led3_on:
+	ldr r11, =0xE0200284
+	//ldr r12, =0x0
+	//str r12, [r11]
+
+	ldr r12, [r11]
+	bic r12, r12, #0x3
+	str r12, [r11]
+
+	mov pc, lr
+.global display_hex
+display_hex:
+	ldr	r1, =0xE2900020
+	ldr	r2, =0x30
+	str	r2, [r1]		@UTH0='0'
+
+	ldr	r2, =0x78
+	str	r2, [r1]		@UTH0='x'
+
+	ldr	r3, =28
+
+disphex_loop_cnt1:
+	lsr	r2, r0, r3
+	and	r2, r2, #0xF
+	cmp	r2, #10
+	addmi	r2, r2, #0x30
+	addpl	r2, r2, #0x37
+	str	r2, [r1]
+	
+	sub	r3, r3, #4
+	cmp	r3, #0
+	bpl	disphex_loop_cnt1
+
+	ldr	r2, =0xA
+	str	r2, [r1]
+
+	ldr	r2, =0xD
+	str	r2, [r1]
+
+	mov 	pc, lr
+
+.global display_mem
+display_mem:
+	ldr	r1, =0xE2900020
+	ldr	r2, =0x30
+	str	r2, [r1]		@UTH0='0'
+
+	ldr	r2, =0x78
+	str	r2, [r1]		@UTH0='x'
+
+	ldr	r3, =28
+	ldr	r0, [r0]
+
+disphex_loop_cnt:
+	lsr	r2, r0, r3
+	and	r2, r2, #0xF
+	cmp	r2, #10
+	addmi	r2, r2, #0x30
+	addpl	r2, r2, #0x37
+	str	r2, [r1]
+	
+	sub	r3, r3, #4
+	cmp	r3, #0
+	bpl	disphex_loop_cnt
+
+	ldr	r2, =0xA
+	str	r2, [r1]
+
+	ldr	r2, =0xD
+	str	r2, [r1]
+
+	mov 	pc, lr
+
+.globl	ddrmem_init
+ddrmem_init:
+#define APB_DMC_0_BASE	0xF0000000
+#define DMC_CONCONTROL	0x00
+#define DMC_MEMCONTROL	0x04
+#define DMC_MEMCONFIG0	0x08
+#define DMC_MEMCONFIG1	0x0C
+#define	DMC_DIRECTCMD	0x10
+#define DMC_PRECHCONFIG	0x14
+#define DMC_PHYCONTROL0	0x18
+#define DMC_PHYCONTROL1	0x1C
+#define DMC_PWRDNCONFIG	0x28
+#define DMC_TIMINGAREF	0x30
+#define DMC_TIMINGROW	0x34
+#define DMC_TIMINGDATA	0x38
+#define DMC_TIMINGPOWER	0x3C
+#define DMC_PHYSTATUS	0x40
+
+	//setp 2
+	ldr	r0, =APB_DMC_0_BASE
+	ldr	r1, =0x0010100A
+	str	r1, [r0, #DMC_PHYCONTROL0]
+	
+	//step 3
+	ldr	r1, =0x00000086
+	str	r1, [r0, #DMC_PHYCONTROL1]
+
+	//step 4
+	ldr	r1, =0x0010100B
+	str	r1, [r0, #DMC_PHYCONTROL0]
+
+find_lock_val:
+	//step 11
+	ldr	r1, [r0, #DMC_PHYSTATUS]
+	and	r2, r1, #0x7
+	cmp	r2, #0x7
+	bne	find_lock_val
+
+	//step 12
+	and 	r1, #0x3FC0
+	mov	r2, r1, LSL #18
+	orr	r2, r2, #0x100000
+	orr	r2, r2,	#0x1000
+	orr	r1, r2,	#0xB
+	str	r1, [r0, #DMC_PHYCONTROL0]
+
+	//step 5
+	ldr	r1, =0x0FFF1010
+	str	r1, [r0, #DMC_CONCONTROL]
+	//step 6
+	ldr	r1, =0x00202400
+	str	r1, [r0, #DMC_MEMCONTROL]
+	//step 7
+	ldr	r1, =0x20E00323
+	str	r1, [r0, #DMC_MEMCONFIG0]
+	//step 8
+	ldr	r1, =0xFF000000
+	str	r1, [r0, #DMC_PRECHCONFIG]
+	ldr	r1, =0xFFFF00FF
+	str	r1, [r0, #DMC_PWRDNCONFIG]
+
+	//step 9
+	ldr	r1, =0x0000040E
+	str	r1, [r0, #DMC_TIMINGAREF]
+	//Timing Row
+	ldr	r1, =0x11122206
+	str	r1, [r0, #DMC_TIMINGROW]
+	//Timing Date
+	ldr	r1, =0x12240000
+	str	r1, [r0, #DMC_TIMINGDATA]
+	//Timing Power
+	ldr	r1, =0x05DC0343
+	str	r1, [r0, #DMC_TIMINGPOWER]
+
+	//step 14
+	ldr	r1, =0x07000000
+	str	r1, [r0, #DMC_DIRECTCMD]
+
+	//step 16
+	ldr	r1, =0x01000000
+	str	r1, [r0, #DMC_DIRECTCMD]
+
+	//step 17
+	ldr	r1, =0x00020000
+	str	r1, [r0, #DMC_DIRECTCMD]
+
+	//step 18
+	ldr	r1, =0x00030000
+	str	r1, [r0, #DMC_DIRECTCMD]
+
+	//step 19
+	ldr	r1, =0x00010000
+	str	r1, [r0, #DMC_DIRECTCMD]
+
+	//step 20
+	ldr	r1, =0x00000542
+	str	r1, [r0, #DMC_DIRECTCMD]
+
+	//step 21
+	ldr	r1, =0x01000000
+	str	r1, [r0, #DMC_DIRECTCMD]
+
+	//step 22
+	ldr	r1, =0x05000000
+	str	r1, [r0, #DMC_DIRECTCMD]
+
+	ldr	r1, =0x05000000
+	str	r1, [r0, #DMC_DIRECTCMD]
+
+	//step 23
+	ldr	r1, =0x00000442
+	str	r1, [r0, #DMC_DIRECTCMD]
+	
+	//step 25(1)
+	ldr	r1, =0x00010380
+	str	r1, [r0, #DMC_DIRECTCMD]
+	
+	ldr	r1, =0x00010000
+	str	r1, [r0, #DMC_DIRECTCMD]
+
+	//step 27
+	ldr	r1, =0x0FF01030
+	str	r1, [r0, #DMC_CONCONTROL]
+	
+	//step 28
+	ldr	r1, =0x00202400
+	str	r1, [r0, #DMC_MEMCONTROL]
+
+	//output DDR OK
+	ldr	r0, =0xE2900020
+	ldr	r1, =0x44
+	str	r1, [r0]
+	ldr	r1, =0x44
+	str	r1, [r0]
+	ldr	r1, =0x52
+	str	r1, [r0]
+	ldr	r1, =0x5F
+	str	r1, [r0]
+	ldr	r1, =0x4F
+	str	r1, [r0]
+	ldr	r1, =0x6B
+	str	r1, [r0]
+	ldr	r1, =0x21
+	str	r1, [r0]
+	ldr	r1, =0xA
+	str	r1, [r0]
+	ldr	r1, =0xD
+	str	r1, [r0]
+
+	mov 	pc, lr
+
+#define SROM_BW  0xE8000000
+#define SROM_BC0 0xE8000008
+
+low_level_srom_net_init:
+	ldr	r0, =SROM_BW
+	ldr	r1, =0x30
+	str	r1, [r0]
+	ldr	r0, =SROM_BC0
+	ldr r1, =0x33022220
+	str	r1, [r0]
 	mov	pc, lr

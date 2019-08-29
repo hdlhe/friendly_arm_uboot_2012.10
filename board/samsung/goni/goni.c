@@ -49,8 +49,9 @@ int board_init(void)
 
 int dram_init(void)
 {
-	gd->ram_size = PHYS_SDRAM_1_SIZE + PHYS_SDRAM_2_SIZE +
-			PHYS_SDRAM_3_SIZE;
+//	gd->ram_size = PHYS_SDRAM_1_SIZE + PHYS_SDRAM_2_SIZE +
+//			PHYS_SDRAM_3_SIZE;
+	gd->ram_size = PHYS_SDRAM_1_SIZE;
 
 	return 0;
 }
@@ -59,10 +60,10 @@ void dram_init_banksize(void)
 {
 	gd->bd->bi_dram[0].start = PHYS_SDRAM_1;
 	gd->bd->bi_dram[0].size = PHYS_SDRAM_1_SIZE;
-	gd->bd->bi_dram[1].start = PHYS_SDRAM_2;
-	gd->bd->bi_dram[1].size = PHYS_SDRAM_2_SIZE;
-	gd->bd->bi_dram[2].start = PHYS_SDRAM_3;
-	gd->bd->bi_dram[2].size = PHYS_SDRAM_3_SIZE;
+//	gd->bd->bi_dram[1].start = PHYS_SDRAM_2;
+//	gd->bd->bi_dram[1].size = PHYS_SDRAM_2_SIZE;
+//	gd->bd->bi_dram[2].start = PHYS_SDRAM_3;
+//	gd->bd->bi_dram[2].size = PHYS_SDRAM_3_SIZE;
 }
 
 #ifdef CONFIG_DISPLAY_BOARDINFO
@@ -145,4 +146,11 @@ struct s3c_plat_otg_data s5pc110_otg_data = {
 	.regs_otg = S5PC110_OTG_BASE,
 	.usb_phy_ctrl = S5PC110_USB_PHY_CONTROL,
 };
+#endif
+
+#ifdef CONFIG_DRIVER_DM9000
+int board_eth_init(bd_t *bis)
+{
+	return dm9000_initialize(bis);
+}
 #endif
